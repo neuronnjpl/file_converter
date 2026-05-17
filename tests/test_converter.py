@@ -1,51 +1,122 @@
-import os
 import pytest
 import pandas as pd
 from pathlib import Path
 
-from documents_utils.pdf_to_csv import convert_pdf_file
-from documents_utils.rules import check_regle_1
+from documents_utils.controllers.converter import convert_file
+from documents_utils.models.rules import check_regle_1
+
+ASSETS = Path(__file__).parent / "assets"
+PDF_TWO_TABLES = ASSETS / "test_avec_2_tableaux" / "111.pdf"
 
 
-@pytest.fixture
-def rtl_pdf():
-    """PDF de test contenant un tableau valide pour test de règle."""
-    #path = Path(os.getcwd()) / "assets" / "test1" / "tableau_exemple.pdf"
-    path = Path(os.getcwd()) / "assets" / "test_avec_2_tableaux" / "111.pdf"
-    if not path.is_file():
-        raise FileNotFoundError(f"Le fichier de test est introuvable : {path}")
-    return str(path)
+# ---------------------------------------------------------------------------
+# check_regle_1 — tests unitaires sur CSV synthétiques (rapides, sans PDF)
+# ---------------------------------------------------------------------------
 
-@pytest.fixture
-def output_dir(tmp_path):
-    return tmp_path
+def test_regle_1_ok_quand_saisissable_inferieur(tmp_path):
+    csv_path = tmp_path / "ok.csv"
+    csv_path.write_text(
+        "total saisissable,0.50 EUR\n"
+        "solde bancaire insaisissable à retenir,1.00 EUR\n",
+        encoding="utf-8",
+    )
+    assert check_regle_1(str(csv_path)).ok is True
 
-def test_convert_pdf_file_with_rules(rtl_pdf, output_dir, capsys):
-    result = convert_pdf_file(
-        pdf_path=rtl_pdf,
-        output_dir=str(output_dir),
+
+def test_regle_1_violee_quand_saisissable_superieur(tmp_path):
+    csv_path = tmp_path / "violated.csv"
+    csv_path.write_text(
+        "total saisissable,2.00 EUR\n"
+        "solde bancaire insaisissable à retenir,1.00 EUR\n",
+        encoding="utf-8",
+    )
+    assert check_regle_1(str(csv_path)).ok is False
+
+
+def test_regle_1_donnees_insuffisantes_retourne_false(tmp_path):
+    csv_path = tmp_path / "incomplete.csv"
+    csv_path.write_text("autre label,1.00 EUR\n", encoding="utf-8")
+    assert check_regle_1(str(csv_path)).ok is False
+
+
+def test_regle_1_egalite_retourne_false(tmp_path):
+    csv_path = tmp_path / "equal.csv"
+    csv_path.write_text(
+        "total saisissable,1.00 EUR\n"
+        "solde bancaire insaisissable à retenir,1.00 EUR\n",
+        encoding="utf-8",
+    )
+    assert check_regle_1(str(csv_path)).ok is False
+
+
+# ---------------------------------------------------------------------------
+# convert_file — tests d'intégration
+# ---------------------------------------------------------------------------
+
+def test_convert_retourne_true_et_cree_csv(tmp_path):
+    result = convert_file(
+        pdf_path=str(PDF_TWO_TABLES),
+        output_dir=str(tmp_path),
         output_format="csv",
         verbose=False,
-        check_rules=True
     )
+    assert result is True
+    assert len(list(tmp_path.rglob("*.csv"))) >= 1
 
-    # Vérifie que le traitement s'est fait
-    assert result is True, "Le fichier n'a pas été traité correctement."
 
-    # Vérifie la présence d'au moins un CSV
-    csv_files = list(output_dir.rglob("table_1.csv"))
-    assert len(csv_files) >= 1, "Le fichier table_1.csv n’a pas été généré."
+def test_convert_deux_tableaux_cree_deux_fichiers(tmp_path):
+    convert_file(
+        pdf_path=str(PDF_TWO_TABLES),
+        output_dir=str(tmp_path),
+        output_format="csv",
+        verbose=False,
+    )
+    assert len(list(tmp_path.rglob("table_1.csv"))) == 1
+    assert len(list(tmp_path.rglob("table_2.csv"))) == 1
 
-    csv_files = list(output_dir.rglob("table_2.csv"))
-    assert len(csv_files) >= 1, "Le fichier table_1.csv n’a pas été généré."
-    ok = check_regle_1(csv_files[0])
-    assert not ok, "❌ La règle 1 a échoué pour table_2.csv"
 
-    # Vérifie le contenu
-    df = pd.read_csv(csv_files[0])
-    assert df.shape[0] > 0, "Le fichier CSV généré est vide (lignes)."
-    assert df.shape[1] > 0, "Le fichier CSV généré est vide (colonnes)."
+def test_convert_csv_non_vide(tmp_path):
+    convert_file(
+        pdf_path=str(PDF_TWO_TABLES),
+        output_dir=str(tmp_path),
+        output_format="csv",
+        verbose=False,
+    )
+    csv_file = list(tmp_path.rglob("table_1.csv"))[0]
+    df = pd.read_csv(csv_file)
+    assert df.shape[0] > 0
+    assert df.shape[1] > 0
 
-    # Vérifie que la règle a bien été exécutée (grâce à l'affichage)
+
+def test_convert_fichier_inexistant_retourne_false(tmp_path):
+    result = convert_file(
+        pdf_path=str(tmp_path / "inexistant.pdf"),
+        output_dir=str(tmp_path),
+        output_format="csv",
+        verbose=False,
+    )
+    assert result is False
+
+
+def test_convert_avec_regles_affiche_verification(tmp_path, capsys):
+    convert_file(
+        pdf_path=str(PDF_TWO_TABLES),
+        output_dir=str(tmp_path),
+        output_format="csv",
+        verbose=False,
+        check_rules=True,
+    )
     captured = capsys.readouterr()
     assert "Vérification de la règle 1" in captured.out
+
+
+def test_convert_avec_regles_detecte_violation_table_2(tmp_path):
+    convert_file(
+        pdf_path=str(PDF_TWO_TABLES),
+        output_dir=str(tmp_path),
+        output_format="csv",
+        verbose=False,
+        check_rules=True,
+    )
+    table_2 = list(tmp_path.rglob("table_2.csv"))[0]
+    assert check_regle_1(str(table_2)).ok is False

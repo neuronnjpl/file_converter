@@ -1,33 +1,27 @@
-import argparse
 import sys
 import traceback
+from pathlib import Path
 
-sys.path.append("../src")
-from documents_utils.pdf_to_csv import convert_all_pdfs
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from documents_utils.controllers.converter import main
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Extract tables from all PDFs in a directory using Camelot.")
-    parser.add_argument("--input-dir", required=True, help="Directory containing PDF files.")
-    parser.add_argument("--output-dir", default=".", help="Directory to save the output.")
-    parser.add_argument("--output-format", default="csv", choices=["csv", "json", "excel"], help="Output format.")
-    parser.add_argument("--verbose", action="store_true", help="Print verbose information.")
-    parser.add_argument("--skip-existing", action="store_true", help="Skip PDFs already processed.")
-    parser.add_argument(
-        "--check-rules",
-        action="store_true",
-        help="Activer la vérification des règles métiers après extraction des tables."
-    )
+def _silent_unraisable_hook(unraisable):
+    # Supprime les PermissionError sur les fichiers temporaires Windows lors de l'arrêt
+    if isinstance(unraisable.exc_value, PermissionError):
+        return
+    sys.__unraisablehook__(unraisable)
 
-    args = parser.parse_args()
-    convert_all_pdfs(args)
+
+sys.unraisablehook = _silent_unraisable_hook
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
         if isinstance(e, PermissionError) and "Temp" in str(e):
-            pass  # Ignore proprement les erreurs sur les fichiers temporaires
+            pass
         else:
             traceback.print_exc()
             sys.exit(1)
