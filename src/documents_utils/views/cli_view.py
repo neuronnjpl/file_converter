@@ -1,3 +1,4 @@
+import os
 from documents_utils.models.rules import RegleResult
 
 
@@ -39,15 +40,20 @@ def print_summary(output_dir, total, processed, with_tables, non_pdf):
 
 
 def print_rule_1_result(csv_path, result: RegleResult):
-    print(f"🔍 Vérification de la règle 1 pour {csv_path}")
-    if result.saisissable is not None and result.insaisissable is not None:
-        print(f"   🧮 Insaisissable : {result.insaisissable} | Saisissable : {result.saisissable}")
-        if result.ok:
-            print("   ✅ Règle 1 OK : Total saisissable < montant insaisissable")
-        else:
-            print("   ❌ Règle 1 VIOLÉE : Total saisissable >= montant insaisissable")
+    filename = os.path.basename(csv_path)
+    print(f"   🔍 Règle 1 — {filename}")
+    if result.saisissable is None or result.insaisissable is None:
+        print(f"      ℹ️  Non applicable (ce tableau ne contient pas de données de saisie)")
+        return
+    sai = result.saisissable
+    ins = result.insaisissable
+    print(f"      Saisissable : {sai:.2f} EUR  |  Insaisissable : {ins:.2f} EUR")
+    if result.ok:
+        print(f"      ✅ Conforme : {sai:.2f} < {ins:.2f}")
+    elif sai == ins:
+        print(f"      ❌ Violation : montants égaux ({sai:.2f} EUR) — le saisissable doit être strictement inférieur")
     else:
-        print("   ⚠️ Données insuffisantes pour vérifier la règle 1.")
+        print(f"      ❌ Violation : saisissable ({sai:.2f} EUR) dépasse l'insaisissable ({ins:.2f} EUR)")
 
 
 def print_check_rules_warning():

@@ -1,53 +1,107 @@
-# Convertisseur pdf vers csv
+# Convertisseur PDF vers CSV
 
+Extrait les tableaux de fichiers PDF vectoriels et les exporte en CSV, JSON ou Excel.
 
+> **Limitation** : fonctionne uniquement sur les PDFs vectoriels (avec bordures de tableau). Les PDFs scannés (images) ne sont pas supportés.
 
-Installer python(si nécessaire)
+---
 
+## Installation
 
-Créer un environnement virtuel python 
-    pour installer les packages sans polluer l'ordi (la premiere fois)
-    Se positionner dans un repertoire où se ra créé l'environnement par exemple dans le projet
+**Prérequis** : Python 3.8+
 
-    Sous Linux/Mac
-        python3 -m venv penvjpl
-        source penvjpl/bin/activate
+```bash
+# Créer et activer un environnement virtuel
+python -m venv .venv
 
-    Sous Windows
-        python -m venv monenv
-        monenv\Scripts\activate
+# Windows
+.venv\Scripts\activate
+# Linux / Mac
+source .venv/bin/activate
 
-          
-    A partir de là: 
-        (monenv) 
+# Installer les dépendances
+pip install -r requirements.txt
+```
 
-Installer les packages dans l'environnement  
+---
 
-    (monenv) pip install -r requirements.txt  
+## Utilisation
 
-Exécuter        
-   
-       (.monenv) PS C:\Users\lapor\PycharmProjects\file_converter\bin> python run_converter.py  --input-dir ..\assets\sample_vectoriel_1 --output-dir ../tmp --output-format csv --verbose
+```bash
+python bin/run_converter.py --input-dir <dossier_pdfs> --output-dir <dossier_sortie> [options]
+```
 
-Exemple de Résultat:
+### Options
 
-    🗂️  Résultats enregistrés dans : ../tmp\output_2025-04-04_16-22-52
-    📦 2 fichier(s) PDF trouvé(s) dans ..\assets\sample_vectoriel_1
-    🚫 1 fichier(s) non-PDF ignoré(s)
-    
-    Processing file: 111.pdf
-    Found 2 table(s) in 111.pdf
-    Saved table 1 to ../tmp\output_2025-04-04_16-22-52\111\table_1.csv
-    Saved table 2 to ../tmp\output_2025-04-04_16-22-52\111\table_2.csv
-    
-    Processing file: Test vecto.pdf
-    Found 1 table(s) in Test vecto.pdf
-    Saved table 1 to ../tmp\output_2025-04-04_16-22-52\Test vecto\table_1.csv
-    
-    ✅ Extraction terminée.
-    📁 Dossier de sortie : ../tmp\output_2025-04-04_16-22-52
-    📄 Fichiers PDF trouvés         : 2
-    🔁 Fichiers effectivement traités : 2
-    ✅ Fichiers avec tableau(x)      : 2
-    🚫 Fichiers non-PDF ignorés     : 1
-    ℹ️ Si une erreur concernant les fichiers temporaires apparaît, elle peut être ignorée.
+| Option | Défaut | Description |
+|--------|--------|-------------|
+| `--input-dir` | *(requis)* | Dossier contenant les PDFs |
+| `--output-dir` | `.` | Dossier de sortie |
+| `--output-format` | `csv` | Format de sortie : `csv`, `json`, `excel` |
+| `--verbose` | — | Affiche le détail du traitement |
+| `--skip-existing` | — | Ignore les PDFs déjà traités |
+| `--check-rules` | — | Vérifie les règles métier après extraction (CSV uniquement) |
+
+Les fichiers sont enregistrés dans un sous-dossier horodaté :
+`<output-dir>/output_YYYY-MM-DD_HH-MM-SS/<nom_pdf>/table_1.csv`
+
+### Exemple
+
+```bash
+python bin/run_converter.py --input-dir assets/sample_base_first --output-dir tmp --output-format csv --verbose
+```
+
+```
+🗂️  Résultats enregistrés dans : tmp\output_2025-04-04_16-22-52
+📦 2 fichier(s) PDF trouvé(s) dans assets/sample_base_first
+🚫 1 fichier(s) non-PDF ignoré(s)
+
+Processing file: 111.pdf
+Found 2 table(s) in 111.pdf
+Saved table 1 to tmp\output_2025-04-04_16-22-52\111\table_1.csv
+Saved table 2 to tmp\output_2025-04-04_16-22-52\111\table_2.csv
+
+✅ Extraction terminée.
+📁 Dossier de sortie : tmp\output_2025-04-04_16-22-52
+📄 Fichiers PDF trouvés         : 2
+🔁 Fichiers effectivement traités : 2
+✅ Fichiers avec tableau(x)      : 2
+🚫 Fichiers non-PDF ignorés     : 1
+```
+
+---
+
+## Règles métier (`--check-rules`)
+
+Après extraction, le flag `--check-rules` applique des validations sur les données :
+
+| Règle | Description |
+|-------|-------------|
+| **Règle 1** | Le montant *"total saisissable"* doit être strictement inférieur au *"solde bancaire insaisissable à retenir"* (seuil légal de minimum vital). |
+
+---
+
+## Tests
+
+```bash
+pytest tests/ -v
+```
+
+---
+
+## Structure du projet
+
+```
+bin/
+  run_converter.py          # Point d'entrée CLI
+src/documents_utils/
+  models/
+    pdf_reader.py           # Extraction des tableaux (Camelot)
+    rules.py                # Règles métier
+  views/
+    cli_view.py             # Affichage console
+  controllers/
+    converter.py            # Orchestration
+assets/                     # PDFs d'exemple
+tests/                      # Tests automatisés
+```

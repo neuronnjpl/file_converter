@@ -30,9 +30,6 @@ def convert_file(pdf_path, output_dir, output_format, verbose, check_rules=False
 
             if output_format == "csv":
                 table.to_csv(output_path)
-                if check_rules:
-                    result = rules.check_regle_1(output_path)
-                    cli_view.print_rule_1_result(output_path, result)
             elif output_format == "json":
                 table.to_json(output_path)
             elif output_format == "excel":
@@ -40,6 +37,10 @@ def convert_file(pdf_path, output_dir, output_format, verbose, check_rules=False
 
             if verbose:
                 cli_view.print_table_saved(i + 1, output_path)
+
+            if output_format == "csv" and check_rules:
+                result = rules.check_regle_1(output_path)
+                cli_view.print_rule_1_result(output_path, result)
 
         return True
 
