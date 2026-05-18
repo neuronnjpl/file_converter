@@ -1,5 +1,5 @@
 import os
-from documents_utils.models.rules import RegleResult
+from documents_utils.models.rules import RuleResult
 
 
 def print_processing(filename):
@@ -39,25 +39,28 @@ def print_summary(output_dir, total, processed, with_tables, non_pdf):
     print("ℹ️ Si une erreur concernant les fichiers temporaires apparaît, elle peut être ignorée.")
 
 
-def print_rule_1_result(csv_path, result: RegleResult):
+def print_rule_result(csv_path, result: RuleResult):
     filename = os.path.basename(csv_path)
-    print(f"   🔍 Règle 1 — {filename}")
-    if result.saisissable is None or result.insaisissable is None:
-        print(f"      ℹ️  Non applicable (ce tableau ne contient pas de données de saisie)")
+    print(f"   🔍 {result.rule_name} — {filename}")
+    if not result.has_data:
+        print(f"      ℹ️  Non applicable (libellés absents de ce tableau)")
         return
-    sai = result.saisissable
-    ins = result.insaisissable
-    print(f"      Saisissable : {sai:.2f} EUR  |  Insaisissable : {ins:.2f} EUR")
+    a, b = result.value_a, result.value_b
+    print(f"      {result.rule_name} : {a:.2f} EUR  {result.operator}  {b:.2f} EUR ?")
     if result.ok:
-        print(f"      ✅ Conforme : {sai:.2f} < {ins:.2f}")
-    elif sai == ins:
-        print(f"      ❌ Violation : montants égaux ({sai:.2f} EUR) — le saisissable doit être strictement inférieur")
+        print(f"      ✅ Conforme")
+    elif a == b:
+        print(f"      ❌ Violation : montants égaux ({a:.2f} EUR) — doit être {result.operator}")
     else:
-        print(f"      ❌ Violation : saisissable ({sai:.2f} EUR) dépasse l'insaisissable ({ins:.2f} EUR)")
+        print(f"      ❌ Violation : {a:.2f} n'est pas {result.operator} {b:.2f}")
 
 
 def print_check_rules_warning():
     print("⚠️  --check-rules n'est disponible qu'avec --output-format csv, ignoré.")
+
+
+def print_no_active_rules():
+    print("ℹ️  Aucune règle active dans le registre.")
 
 
 def print_error(pdf_path, error):

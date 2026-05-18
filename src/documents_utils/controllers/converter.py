@@ -1,12 +1,15 @@
 import os
 import argparse
 from datetime import datetime
+from typing import List
 
-from documents_utils.models import pdf_reader, rules
+from documents_utils.models import pdf_reader
+from documents_utils.models.rule_registry import RuleConfig, RuleRegistry
+from documents_utils.models.rules import check_rule
 from documents_utils.views import cli_view
 
 
-def convert_file(pdf_path, output_dir, output_format, verbose, check_rules=False):
+def convert_file(pdf_path, output_dir, output_format, verbose, active_rules: List[RuleConfig] = None):
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
     pdf_output_dir = os.path.join(output_dir, base_name)
     os.makedirs(pdf_output_dir, exist_ok=True)
@@ -38,9 +41,10 @@ def convert_file(pdf_path, output_dir, output_format, verbose, check_rules=False
             if verbose:
                 cli_view.print_table_saved(i + 1, output_path)
 
-            if output_format == "csv" and check_rules:
-                result = rules.check_regle_1(output_path)
-                cli_view.print_rule_1_result(output_path, result)
+            if output_format == "csv" and active_rules:
+                for rule in active_rules:
+                    result = check_rule(output_path, rule)
+                    cli_view.print_rule_result(output_path, result)
 
         return True
 
@@ -50,9 +54,14 @@ def convert_file(pdf_path, output_dir, output_format, verbose, check_rules=False
 
 
 def convert_directory(args):
-    if args.check_rules and args.output_format != "csv":
-        cli_view.print_check_rules_warning()
-        args.check_rules = False
+    active_rules = []
+    if args.check_rules:
+        if args.output_format != "csv":
+            cli_view.print_check_rules_warning()
+        else:
+            active_rules = RuleRegistry().enabled
+            if not active_rules:
+                cli_view.print_no_active_rules()
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_dir = os.path.join(args.output_dir, f"output_{timestamp}")
@@ -79,7 +88,7 @@ def convert_directory(args):
                 cli_view.print_skip(pdf_file)
             continue
 
-        has_tables = convert_file(input_path, output_dir, args.output_format, args.verbose, args.check_rules)
+        has_tables = convert_file(input_path, output_dir, args.output_format, args.verbose, active_rules)
         processed += 1
         if has_tables:
             with_tables += 1
@@ -89,12 +98,12 @@ def convert_directory(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Extract tables from all PDFs in a directory using Camelot.")
-    parser.add_argument("--input-dir", required=True, help="Directory containing PDF files.")
-    parser.add_argument("--output-dir", default=".", help="Directory to save the output.")
-    parser.add_argument("--output-format", default="csv", choices=["csv", "json", "excel"], help="Output format.")
-    parser.add_argument("--verbose", action="store_true", help="Print verbose information.")
-    parser.add_argument("--skip-existing", action="store_true", help="Skip PDFs already processed.")
-    parser.add_argument("--check-rules", action="store_true", help="Activer la vérification des règles métiers après extraction.")
+    parser.add_argument("--input-dir", required=True)
+    parser.add_argument("--output-dir", default=".")
+    parser.add_argument("--output-format", default="csv", choices=["csv", "json", "excel"])
+    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--skip-existing", action="store_true")
+    parser.add_argument("--check-rules", action="store_true")
 
     args = parser.parse_args()
     convert_directory(args)

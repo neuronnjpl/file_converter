@@ -71,6 +71,36 @@ Saved table 2 to tmp\output_2025-04-04_16-22-52\111\table_2.csv
 
 ---
 
+## Interface web (Streamlit)
+
+L'interface permet d'analyser visuellement un répertoire : tri par catégorie, mise en évidence des violations, détail des tableaux extraits.
+
+### Lancement en ligne de commande
+
+```bash
+.venv\Scripts\streamlit.exe run bin/app.py
+```
+
+L'application s'ouvre automatiquement sur **http://localhost:8501**.
+
+### Lancement depuis PyCharm
+
+**Run → Edit Configurations… → + → Python**
+
+| Champ | Valeur |
+|-------|--------|
+| **Name** | `Streamlit app` |
+| **Module name** | `streamlit` |
+| **Parameters** | `run bin/app.py` |
+| **Working directory** | racine du projet |
+| **Python interpreter** | `.venv` |
+
+> Utilise **Module name** (pas *Script path*) — bascule via le menu déroulant à gauche du champ.
+
+Streamlit recharge l'app automatiquement à chaque sauvegarde de `app.py`.
+
+---
+
 ## Règles métier (`--check-rules`)
 
 Après extraction, le flag `--check-rules` applique des validations sur les données :

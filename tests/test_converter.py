@@ -4,6 +4,7 @@ from pathlib import Path
 
 from documents_utils.controllers.converter import convert_file
 from documents_utils.models.rules import check_regle_1
+from documents_utils.models.rule_registry import RuleConfig
 
 ASSETS = Path(__file__).parent / "assets"
 PDF_TWO_TABLES = ASSETS / "test_avec_2_tableaux" / "111.pdf"
@@ -99,15 +100,19 @@ def test_convert_fichier_inexistant_retourne_false(tmp_path):
 
 
 def test_convert_avec_regles_affiche_verification(tmp_path, capsys):
+    rule = RuleConfig(
+        id="regle_1", name="Règle 1", description="",
+        enabled=True, label_a="total saisissable", label_b="insaisissable", operator="<",
+    )
     convert_file(
         pdf_path=str(PDF_TWO_TABLES),
         output_dir=str(tmp_path),
         output_format="csv",
         verbose=False,
-        check_rules=True,
+        active_rules=[rule],
     )
     captured = capsys.readouterr()
-    assert "Vérification de la règle 1" in captured.out
+    assert "Règle 1" in captured.out
 
 
 def test_convert_avec_regles_detecte_violation_table_2(tmp_path):
@@ -116,7 +121,6 @@ def test_convert_avec_regles_detecte_violation_table_2(tmp_path):
         output_dir=str(tmp_path),
         output_format="csv",
         verbose=False,
-        check_rules=True,
     )
     table_2 = list(tmp_path.rglob("table_2.csv"))[0]
     assert check_regle_1(str(table_2)).ok is False

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "regle_1",
+    "name": "Règle 1",
+    "description": "Total saisissable doit être strictement inférieur au solde bancaire insaisissable",
+    "enabled": true,
+    "label_a": "total saisissable",
+    "label_b": "insaisissable",
+    "operator": "<"
+  },
+  {
+    "id": "05078149",
+    "name": "Regle 2",
+    "description": "",
+    "enabled": false,
+    "label_a": "59",
+    "label_b": "59",
+    "operator": "<"
+  }
+]
